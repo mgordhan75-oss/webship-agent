@@ -28,7 +28,8 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('textbox', { name: 'Customer #' }).fill(String(data['Customer #']));
     await page.getByRole('button').click();
     await page.waitForTimeout(2000);
-    await page.locator('table tbody tr:first-child td:last-child a').first().click();
+    await page.waitForSelector('table tbody tr', { timeout: 10000 });
+    await page.locator('table tbody tr').first().locator('a').last().click();
     await page.waitForTimeout(3000);
     console.log('Customer account opened');
 
