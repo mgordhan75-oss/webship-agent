@@ -5,16 +5,19 @@ app.use(express.json());
 
 app.post('/quote', async (req, res) => {
   const data = req.body;
+  const webhookUrl = data.webhookUrl;
+  
   console.log('Received quote request for:', data['Customer Name']);
-
+  
+  res.json({ success: true, message: 'Quote job started' });
+  
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
-
+  
   try {
     await page.goto('https://auwebship.inxpress.com/imcs_au/login', { waitUntil: 'networkidle' });
     await page.getByRole('link', { name: 'Admin Login' }).click();
     await page.waitForTimeout(1000);
-
     await page.getByPlaceholder('Franchise #').fill('125');
     await page.locator('#id_userMo_userName').fill('milan gordhan');
     await page.locator('#id_userMo_password').fill('Simran2022');
@@ -25,7 +28,6 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('textbox', { name: 'Customer #' }).fill(String(data['Customer #']));
     await page.getByRole('button').click();
     await page.waitForTimeout(2000);
-
     await page.locator('table tbody tr:first-child td:last-child a').first().click();
     await page.waitForTimeout(3000);
     console.log('Customer account opened');
@@ -70,18 +72,33 @@ app.post('/quote', async (req, res) => {
 
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
     await browser.close();
+    console.log('Screenshot taken');
 
-    res.json({
-      success: true,
-      customerName: data['Customer Name'],
-      screenshot: screenshot.toString('base64')
-    });
-    console.log('Done - screenshot returned');
+    if (webhookUrl) {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          success: true,
+          customerName: data['Customer Name'],
+          customerNumber: data['Customer #'],
+          email: data['email'],
+          screenshot: screenshot.toString('base64')
+        })
+      });
+      console.log('Result sent to webhook');
+    }
 
   } catch (error) {
     await browser.close();
     console.error('Error:', error.message);
-    res.status(500).json({ success: false, error: error.message });
+    if (webhookUrl) {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: false, error: error.message })
+      });
+    }
   }
 });
 
