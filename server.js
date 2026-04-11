@@ -3,20 +3,19 @@ const { chromium } = require('playwright');
 const app = express();
 app.use(express.json());
 
-async function runQuote(data) {
-  const webhookUrl = data.webhookUrl;
-  console.log('Starting Playwright for:', data['Customer Name']);
-  
+app.post('/quote', async (req, res) => {
+  const data = req.body;
+  console.log('Received quote request for:', data['Customer Name']);
+
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
     console.log('Browser launched');
     const page = await browser.newPage();
-    console.log('New page created');
 
     await page.goto('https://auwebship.inxpress.com/imcs_au/login', { waitUntil: 'networkidle' });
     console.log('Login page loaded');
-    
+
     await page.getByRole('link', { name: 'Admin Login' }).click();
     await page.waitForTimeout(1000);
     await page.getByPlaceholder('Franchise #').fill('125');
@@ -72,57 +71,33 @@ async function runQuote(data) {
     console.log('Quote results loaded');
 
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
-    console.log('Screenshot taken');
     await browser.close();
+    console.log('Screenshot taken - sending response');
 
-    if (webhookUrl) {
-      await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          success: true,
-          customerName: data['Customer Name'],
-          customerNumber: data['Customer #'],
-          email: data['email'],
-          screenshot: screenshot.toString('base64')
-        })
-      });
-      console.log('Result sent to webhook');
-    }
+    res.json({
+      success: true,
+      customerName: data['Customer Name'],
+      customerNumber: data['Customer #'],
+      email: data['email'],
+      screenshot: screenshot.toString('base64')
+    });
 
   } catch (error) {
-    console.error('ERROR in runQuote:', error.message);
-    console.error('Stack:', error.stack);
+    console.error('ERROR:', error.message);
     if (browser) await browser.close();
-    if (data.webhookUrl) {
-      await fetch(data.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ success: false, error: error.message })
-      });
-    }
+    res.status(500).json({ success: false, error: error.message });
   }
-}
-
-app.post('/quote', async (req, res) => {
-  const data = req.body;
-  console.log('Received quote request for:', data['Customer Name']);
-  res.json({ success: true, message: 'Quote job started' });
-  runQuote(data).catch(err => console.error('Unhandled error:', err));
 });
 
 app.get('/test', async (req, res) => {
   try {
-    console.log('Test endpoint hit');
     const browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();
     await page.goto('https://example.com');
     const title = await page.title();
     await browser.close();
-    console.log('Test successful:', title);
     res.json({ success: true, title: title });
   } catch (error) {
-    console.error('Test failed:', error.message);
     res.json({ success: false, error: error.message });
   }
 });
