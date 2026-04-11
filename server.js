@@ -101,7 +101,21 @@ app.post('/quote', async (req, res) => {
     }
   }
 });
-
+app.get('/test', async (req, res) => {
+  try {
+    console.log('Test endpoint hit - launching browser...');
+    const browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto('https://example.com');
+    const title = await page.title();
+    await browser.close();
+    console.log('Test successful:', title);
+    res.json({ success: true, title: title });
+  } catch (error) {
+    console.error('Test failed:', error.message);
+    res.json({ success: false, error: error.message });
+  }
+});
 app.listen(3000, () => {
   console.log('Webship agent running on port 3000');
 });
