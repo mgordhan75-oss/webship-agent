@@ -10,7 +10,8 @@ app.post('/quote', async (req, res) => {
   let browser;
   try {
     browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage();
+    const context = await browser.newContext();
+    const page = await context.newPage();
 
     await page.goto('https://auwebship.inxpress.com/imcs_au/login');
     await page.getByRole('link', { name: 'Admin Login' }).click();
@@ -20,6 +21,11 @@ app.post('/quote', async (req, res) => {
     await page.locator('#id_userMo_password').click();
     await page.locator('#id_userMo_password').fill('Simran2022');
     await page.getByText('Sign in').click();
+    await page.waitForTimeout(3000);
+    await page.goto('https://auwebship.inxpress.com/imcs_au/franchise/customer/view');
+    await page.waitForTimeout(2000);
+    console.log('On customer list page');
+
     await page.getByRole('textbox', { name: 'Customer #' }).click();
     await page.getByRole('textbox', { name: 'Customer #' }).fill(String(data['Customer #']));
     await page.getByRole('button').click();
