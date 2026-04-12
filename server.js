@@ -6,6 +6,7 @@ app.use(express.json());
 app.post('/quote', async (req, res) => {
   const data = req.body;
   console.log('Received quote request for:', data['Customer Name']);
+  console.log('Full data received:', JSON.stringify(data));
 
   let browser;
   try {
