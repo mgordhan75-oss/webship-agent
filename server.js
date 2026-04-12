@@ -25,7 +25,35 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('button').click();
     await page.waitForSelector('table tbody tr:first-child', { timeout: 15000 });
     await page.waitForTimeout(3000);
-    await page.locator('table tbody tr:first-child td:last-child a').first().click();
+
+    const selectors = [
+      'table tbody tr:first-child td:last-child a',
+      'table tr:nth-child(2) td:last-child a',
+      '.table tbody tr:first-child a',
+      'tbody tr a',
+      'table a'
+    ];
+
+    let clicked = false;
+    for (const selector of selectors) {
+      try {
+        const el = page.locator(selector).first();
+        const count = await el.count();
+        if (count > 0) {
+          await el.click();
+          clicked = true;
+          console.log('Clicked with selector:', selector);
+          break;
+        }
+      } catch (e) {
+        console.log('Selector failed:', selector);
+      }
+    }
+
+    if (!clicked) {
+      throw new Error('Could not find customer login link');
+    }
+
     await page.waitForTimeout(3000);
     console.log('Customer account opened');
 
