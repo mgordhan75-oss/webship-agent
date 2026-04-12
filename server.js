@@ -23,8 +23,8 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('textbox', { name: 'Customer #' }).click();
     await page.getByRole('textbox', { name: 'Customer #' }).fill(String(data['Customer #']));
     await page.getByRole('button').click();
-    await page.waitForSelector('table tbody tr:first-child', { timeout: 15000 });
-    await page.waitForTimeout(3000);
+    await page.waitForSelector('table tbody tr:first-child', { timeout: 30000 });
+    await page.waitForTimeout(5000);
 
     const selectors = [
       'table tbody tr:first-child td:last-child a',
