@@ -23,8 +23,22 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('textbox', { name: 'Customer #' }).click();
     await page.getByRole('textbox', { name: 'Customer #' }).fill(String(data['Customer #']));
     await page.getByRole('button').click();
-    await page.getByRole('row', { name: data['Customer Name'] + '  Login' }).getByRole('link').click();
+    await page.waitForSelector('table tbody tr:first-child', { timeout: 15000 });
+    await page.waitForTimeout(3000);
+    await page.locator('table tbody tr:first-child td:last-child a').first().click();
+    await page.waitForTimeout(3000);
+    console.log('Customer account opened');
+
+    const cancelBtn = page.locator('button:has-text("Cancel")');
+    if (await cancelBtn.count() > 0) {
+      await cancelBtn.first().click();
+      await page.waitForTimeout(1000);
+    }
+
     await page.getByRole('link', { name: 'Quick Quote' }).click();
+    await page.waitForTimeout(2000);
+    console.log('Quick Quote page ready');
+
     await page.getByText('Domestic', { exact: true }).click();
     await page.locator('#id_easyShipMo_senderCity').dblclick();
     await page.locator('#id_easyShipMo_senderCity').fill(String(data['Origin City']));
@@ -32,12 +46,16 @@ app.post('/quote', async (req, res) => {
     await page.locator('#id_easyShipMo_senderStateCode').fill(String(data['Origin State']));
     await page.locator('#id_easyShipMo_senderPostalCode').click();
     await page.locator('#id_easyShipMo_senderPostalCode').fill(String(data['Origin Post Code']));
+    console.log('Origin filled');
+
     await page.locator('#id_easyShipMo_receiverCity').click();
     await page.locator('#id_easyShipMo_receiverCity').fill(String(data['Destination City']));
     await page.locator('#id_easyShipMo_receiverStateCode').click();
     await page.locator('#id_easyShipMo_receiverStateCode').fill(String(data['Destination State']));
     await page.locator('#id_easyShipMo_receiverPostalCode').click();
     await page.locator('#id_easyShipMo_receiverPostalCode').fill(String(data['Destination Post Code']));
+    console.log('Destination filled');
+
     await page.getByRole('textbox', { name: 'Weight' }).click();
     await page.getByRole('textbox', { name: 'Weight' }).fill(String(data['Weight']));
     await page.getByRole('textbox', { name: 'Weight' }).press('Tab');
@@ -48,8 +66,11 @@ app.post('/quote', async (req, res) => {
     await page.getByRole('textbox', { name: 'Height' }).fill(String(data['Height']));
     await page.getByRole('textbox', { name: 'Height' }).press('Tab');
     await page.getByRole('textbox', { name: 'Quantity' }).fill(String(data['Quantity']));
+    console.log('Package info filled');
+
     await page.getByRole('button', { name: ' Get my quote estimate' }).click();
     await page.waitForTimeout(15000);
+    console.log('Quote results loaded');
 
     const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
     await browser.close();
