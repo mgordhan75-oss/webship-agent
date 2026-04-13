@@ -6,7 +6,6 @@ app.use(express.json());
 app.post('/quote', async (req, res) => {
   const data = req.body;
   console.log('Received quote request for:', data['Customer Name']);
-  console.log('Full data received:', JSON.stringify(data));
 
   let browser;
   try {
@@ -33,15 +32,91 @@ app.post('/quote', async (req, res) => {
     await page.waitForSelector('table tbody tr:first-child', { timeout: 30000 });
     await page.waitForTimeout(5000);
 
-    const debugScreenshot = await page.screenshot({ fullPage: true, type: 'png' });
+    const selectors = [
+      'table tbody tr:first-child td:last-child a',
+      'table tr:nth-child(2) td:last-child a',
+      '.table tbody tr:first-child a',
+      'tbody tr a',
+      'table a'
+    ];
+
+    let clicked = false;
+    for (const selector of selectors) {
+      try {
+        const el = page.locator(selector).first();
+        const count = await el.count();
+        if (count > 0) {
+          await el.click();
+          clicked = true;
+          console.log('Clicked with selector:', selector);
+          break;
+        }
+      } catch (e) {
+        console.log('Selector failed:', selector);
+      }
+    }
+
+    if (!clicked) {
+      throw new Error('Could not find customer login link');
+    }
+
+    await page.waitForTimeout(3000);
+    console.log('Customer account opened');
+
+    const cancelBtn = page.locator('button:has-text("Cancel")');
+    if (await cancelBtn.count() > 0) {
+      await cancelBtn.first().click();
+      await page.waitForTimeout(1000);
+    }
+
+    await page.getByRole('link', { name: 'Quick Quote' }).click();
+    await page.waitForTimeout(2000);
+    console.log('Quick Quote page ready');
+
+    await page.getByText('Domestic', { exact: true }).click();
+    await page.locator('#id_easyShipMo_senderCity').dblclick();
+    await page.locator('#id_easyShipMo_senderCity').fill(String(data['Origin City']));
+    await page.locator('#id_easyShipMo_senderStateCode').click();
+    await page.locator('#id_easyShipMo_senderStateCode').fill(String(data['Origin State']));
+    await page.locator('#id_easyShipMo_senderPostalCode').click();
+    await page.locator('#id_easyShipMo_senderPostalCode').fill(String(data['Origin Post Code']));
+    console.log('Origin filled');
+
+    await page.locator('#id_easyShipMo_receiverCity').click();
+    await page.locator('#id_easyShipMo_receiverCity').fill(String(data['Destination City']));
+    await page.locator('#id_easyShipMo_receiverStateCode').click();
+    await page.locator('#id_easyShipMo_receiverStateCode').fill(String(data['Destination State']));
+    await page.locator('#id_easyShipMo_receiverPostalCode').click();
+    await page.locator('#id_easyShipMo_receiverPostalCode').fill(String(data['Destination Post Code']));
+    console.log('Destination filled');
+
+    await page.getByRole('textbox', { name: 'Weight' }).click();
+    await page.getByRole('textbox', { name: 'Weight' }).fill(String(data['Weight']));
+    await page.getByRole('textbox', { name: 'Weight' }).press('Tab');
+    await page.getByRole('textbox', { name: 'Length' }).fill(String(data['Length']));
+    await page.getByRole('textbox', { name: 'Length' }).press('Tab');
+    await page.getByRole('textbox', { name: 'Width' }).fill(String(data['Width']));
+    await page.getByRole('textbox', { name: 'Width' }).press('Tab');
+    await page.getByRole('textbox', { name: 'Height' }).fill(String(data['Height']));
+    await page.getByRole('textbox', { name: 'Height' }).press('Tab');
+    await page.getByRole('textbox', { name: 'Quantity' }).fill(String(data['Quantity']));
+    console.log('Package info filled');
+
+    await page.getByRole('button', { name: ' Get my quote estimate' }).click();
+    await page.waitForTimeout(15000);
+    console.log('Quote results loaded');
+
+    const screenshot = await page.screenshot({ fullPage: true, type: 'png' });
     await browser.close();
+    console.log('Done - screenshot taken');
+
     res.json({
-      success: false,
-      debug: true,
-      screenshot: debugScreenshot.toString('base64'),
-      error: 'debug screenshot before click'
+      success: true,
+      customerName: data['Customer Name'],
+      customerNumber: data['Customer #'],
+      email: data['email'],
+      screenshot: screenshot.toString('base64')
     });
-    return;
 
   } catch (error) {
     console.error('ERROR:', error.message);
